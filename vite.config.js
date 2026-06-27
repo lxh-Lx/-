@@ -21,5 +21,21 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://big-event-vue-api-t.itheima.net',
+        changeOrigin: true
+      },
+      '/my': {
+        target: 'https://big-event-vue-api-t.itheima.net',
+        changeOrigin: true
+      },
+      '/uploads': {
+        target: 'https://big-event-vue-api-t.itheima.net',
+        changeOrigin: true
+      }
+    }
   }
 })

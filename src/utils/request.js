@@ -2,7 +2,7 @@ import axios from 'axios'
 import { useUserStore } from '@/stores'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
-const baseURL = 'http://big-event-vue-api-t.itheima.net'
+const baseURL = ''
 
 const instance = axios.create({
   // TODO 1. 基础地址，超时时间
@@ -39,11 +39,14 @@ instance.interceptors.response.use(
     // TODO 5. 处理401错误
     // 错误的特殊情况 => 401 权限不足 或 token 过期 => 拦截到登录
     if (err.response?.status === 401) {
+      const useStore = useUserStore()
+      useStore.removeToken()
+      useStore.setUser({})
       router.push('/login')
     }
 
     // 错误的默认情况 => 只要给提示
-    ElMessage.error(err.response.data.message || '服务异常')
+    ElMessage.error(err.response?.data?.message || err.message || '服务异常')
     return Promise.reject(err)
   }
 )

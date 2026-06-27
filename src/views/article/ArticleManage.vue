@@ -1,13 +1,47 @@
 <script setup>
 import { ref } from 'vue'
-import { Delete, Edit } from '@element-plus/icons-vue'
+import { Delete, Edit, ChatDotRound } from '@element-plus/icons-vue'
 import ChannelSelect from './components/ChannelSelect.vue'
 import ArticleEdit from './components/ArticleEdit.vue'
 import { artGetListService, artDelService } from '@/api/article.js'
 import { formatTime } from '@/utils/format.js'
+import { useCommentStore } from '@/stores'
 const articleList = ref([]) // 文章列表
 const total = ref(0) // 总条数
 const loading = ref(false) // loading状态
+
+const commentStore = useCommentStore()
+const commentDialogVisible = ref(false)
+const currentArticleId = ref(null)
+const currentArticleTitle = ref('')
+const commentContent = ref('')
+
+const showComments = (row) => {
+  currentArticleId.value = row.id
+  currentArticleTitle.value = row.title
+  commentDialogVisible.value = true
+  commentStore.getComments(row.id)
+}
+
+const submitComment = async () => {
+  if (!commentContent.value.trim()) {
+    ElMessage.warning('请输入评论内容')
+    return
+  }
+  await commentStore.addComment(currentArticleId.value, commentContent.value)
+  ElMessage.success('评论成功')
+  commentContent.value = ''
+  commentStore.getComments(currentArticleId.value)
+}
+
+const deleteComment = async (commentId) => {
+  await ElMessageBox.confirm('确定删除该评论？', '提示', {
+    type: 'warning'
+  })
+  await commentStore.deleteComment(commentId)
+  ElMessage.success('删除成功')
+  commentStore.getComments(currentArticleId.value)
+}
 
 // 定义请求参数对象
 const params = ref({
@@ -130,7 +164,7 @@ const onSuccess = (type) => {
     <el-table :data="articleList" v-loading="loading">
       <el-table-column label="文章标题" prop="title">
         <template #default="{ row }">
-          <el-link type="primary" :underline="false">{{ row.title }}</el-link>
+          <el-link type="primary" underline="never">{{ row.title }}</el-link>
         </template>
       </el-table-column>
       <el-table-column label="分类" prop="cate_name"></el-table-column>
@@ -149,6 +183,13 @@ const onSuccess = (type) => {
             type="primary"
             :icon="Edit"
             @click="onEditArticle(row)"
+          ></el-button>
+          <el-button
+            circle
+            plain
+            type="info"
+            :icon="ChatDotRound"
+            @click="showComments(row)"
           ></el-button>
           <el-button
             circle
@@ -176,7 +217,96 @@ const onSuccess = (type) => {
 
     <!-- 添加编辑的抽屉 -->
     <article-edit ref="articleEditRef" @success="onSuccess"></article-edit>
+
+    <!-- 评论弹窗 -->
+    <el-dialog
+      v-model="commentDialogVisible"
+      :title="`评论 - ${currentArticleTitle}`"
+      width="600px"
+    >
+      <!-- 评论输入区 -->
+      <el-input
+        v-model="commentContent"
+        type="textarea"
+        :rows="3"
+        placeholder="请输入评论内容..."
+        style="margin-bottom: 20px"
+      />
+      <el-button type="primary" @click="submitComment" style="float: right">
+        发表评论
+      </el-button>
+      <div style="clear: both"></div>
+
+      <!-- 评论列表 -->
+      <div v-if="commentStore.comments.length > 0" style="margin-top: 30px">
+        <h4>评论列表 ({{ commentStore.comments.length }})</h4>
+        <div
+          v-for="comment in commentStore.comments"
+          :key="comment.id"
+          class="comment-item"
+        >
+          <el-avatar icon="User" />
+          <div class="comment-content">
+            <div class="comment-header">
+              <span class="comment-author">{{ comment.nickname }}</span>
+              <span class="comment-time">{{
+                formatTime(comment.createTime)
+              }}</span>
+            </div>
+            <p>{{ comment.content }}</p>
+            <el-button
+              type="text"
+              size="small"
+              @click="deleteComment(comment.id)"
+              style="color: #f56c6c"
+            >
+              删除
+            </el-button>
+          </div>
+        </div>
+      </div>
+      <div v-else class="empty-comments">
+        <el-empty description="暂无评论，快来发表第一条评论吧" />
+      </div>
+    </el-dialog>
   </page-container>
 </template>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.comment-item {
+  display: flex;
+  gap: 12px;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--border-color);
+
+  .comment-content {
+    flex: 1;
+
+    .comment-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+
+      .comment-author {
+        font-weight: 600;
+        color: var(--text-color);
+      }
+
+      .comment-time {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+    }
+
+    p {
+      margin: 0;
+      color: var(--text-color);
+      line-height: 1.6;
+    }
+  }
+}
+
+.empty-comments {
+  margin-top: 30px;
+}
+</style>

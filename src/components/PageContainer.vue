@@ -25,6 +25,9 @@ defineProps({
 .page-container {
   min-height: 100%;
   box-sizing: border-box;
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  transition: background-color 0.3s, border-color 0.3s;
   .header {
     display: flex;
     justify-content: space-between;

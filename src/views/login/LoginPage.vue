@@ -153,7 +153,7 @@ watch(isRegister, () => {
           </el-button>
         </el-form-item>
         <el-form-item class="flex">
-          <el-link type="info" :underline="false" @click="isRegister = false">
+          <el-link type="info" underline="never" @click="isRegister = false">
             ← 返回
           </el-link>
         </el-form-item>
@@ -190,7 +190,7 @@ watch(isRegister, () => {
         <el-form-item class="flex">
           <div class="flex">
             <el-checkbox>记住我</el-checkbox>
-            <el-link type="primary" :underline="false">忘记密码？</el-link>
+            <el-link type="primary" underline="never">忘记密码？</el-link>
           </div>
         </el-form-item>
         <el-form-item>
@@ -203,7 +203,7 @@ watch(isRegister, () => {
           >
         </el-form-item>
         <el-form-item class="flex">
-          <el-link type="info" :underline="false" @click="isRegister = true">
+          <el-link type="info" underline="never" @click="isRegister = true">
             注册 →
           </el-link>
         </el-form-item>
@@ -215,7 +215,8 @@ watch(isRegister, () => {
 <style lang="scss" scoped>
 .login-page {
   height: 100vh;
-  background-color: #fff;
+  background-color: var(--bg-color);
+  transition: background-color 0.3s;
   .bg {
     background: url('@/assets/logo2.png') no-repeat 60% center / 240px auto,
       url('@/assets/login_bg.jpg') no-repeat center / cover;

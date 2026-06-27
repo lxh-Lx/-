@@ -26,6 +26,10 @@ const router = createRouter({
           component: () => import('@/views/article/ArticleChannel.vue')
         },
         {
+          path: '/statistics',
+          component: () => import('@/views/statistics/StatisticsPage.vue')
+        },
+        {
           path: '/user/profile',
           component: () => import('@/views/user/UserProfile.vue')
         },
