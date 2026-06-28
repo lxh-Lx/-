@@ -10,19 +10,24 @@ import {
   CaretBottom,
   Moon,
   Sunny,
-  DataAnalysis
+  DataAnalysis,
+  Bell,
+  Delete,
+  Check
 } from '@element-plus/icons-vue'
 import avatar from '@/assets/default.png'
-import { useUserStore, useThemeStore } from '@/stores'
-import { onMounted } from 'vue'
+import { useUserStore, useThemeStore, useNoticeStore } from '@/stores'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 const userStore = useUserStore()
 const themeStore = useThemeStore()
+const noticeStore = useNoticeStore()
 const router = useRouter()
 
 onMounted(() => {
   userStore.getUser()
   themeStore.initTheme()
+  noticeStore.initNotices()
 })
 
 const handleCommand = async (key) => {
@@ -42,6 +47,42 @@ const handleCommand = async (key) => {
     // 跳转操作
     router.push(`/user/${key}`)
   }
+}
+
+// 通知相关
+const noticeDialogVisible = ref(false)
+
+const openNotice = () => {
+  noticeDialogVisible.value = true
+}
+
+const formatTime = (time) => {
+  const date = new Date(time)
+  const now = new Date()
+  const diff = now - date
+
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
+  return `${Math.floor(diff / 86400000)}天前`
+}
+
+const getNoticeIcon = (type) => {
+  const icons = {
+    system: Bell,
+    comment: 'ChatDotRound',
+    article: 'Document'
+  }
+  return icons[type] || Bell
+}
+
+const getNoticeTypeClass = (type) => {
+  const classes = {
+    system: 'notice-system',
+    comment: 'notice-comment',
+    article: 'notice-article'
+  }
+  return classes[type] || 'notice-system'
 }
 </script>
 
@@ -104,7 +145,9 @@ const handleCommand = async (key) => {
     <el-container>
       <el-header>
         <div>
-          <strong>{{ userStore.user.nickname || userStore.user.username }}</strong>
+          <strong>{{
+            userStore.user.nickname || userStore.user.username
+          }}</strong>
         </div>
         <div class="header-right">
           <!-- 主题切换按钮 -->
@@ -114,6 +157,19 @@ const handleCommand = async (key) => {
             @click="themeStore.toggleTheme"
             class="theme-btn"
           />
+          <!-- 通知按钮 -->
+          <el-badge
+            :value="noticeStore.unreadCount"
+            :hidden="noticeStore.unreadCount === 0"
+            :max="99"
+          >
+            <el-button
+              circle
+              :icon="Bell"
+              @click="openNotice"
+              class="notice-btn"
+            />
+          </el-badge>
           <el-dropdown placement="bottom-end" @command="handleCommand">
             <!-- 展示给用户，默认看到的 -->
             <span class="el-dropdown__box">
@@ -146,6 +202,57 @@ const handleCommand = async (key) => {
       </el-main>
       <el-footer></el-footer>
     </el-container>
+
+    <!-- 通知弹窗 -->
+    <el-dialog v-model="noticeDialogVisible" title="消息通知" width="450px">
+      <div class="notice-header">
+        <el-button
+          text
+          type="primary"
+          @click="noticeStore.markAllAsRead"
+          :disabled="noticeStore.unreadCount === 0"
+        >
+          <el-icon><Check /></el-icon>
+          全部已读
+        </el-button>
+        <el-button text type="danger" @click="noticeStore.clearAll">
+          <el-icon><Delete /></el-icon>
+          清空
+        </el-button>
+      </div>
+      <el-scrollbar height="400px">
+        <div v-if="noticeStore.notices.length === 0" class="notice-empty">
+          <el-empty description="暂无通知" />
+        </div>
+        <div v-else>
+          <div
+            v-for="notice in noticeStore.notices"
+            :key="notice.id"
+            class="notice-item"
+            :class="{ 'notice-unread': !notice.read }"
+            @click="noticeStore.markAsRead(notice.id)"
+          >
+            <div class="notice-icon" :class="getNoticeTypeClass(notice.type)">
+              <el-icon><component :is="getNoticeIcon(notice.type)" /></el-icon>
+            </div>
+            <div class="notice-content">
+              <div class="notice-title">{{ notice.title }}</div>
+              <div class="notice-text">{{ notice.content }}</div>
+              <div class="notice-time">{{ formatTime(notice.time) }}</div>
+            </div>
+            <el-button
+              circle
+              plain
+              type="danger"
+              :icon="Delete"
+              size="small"
+              class="notice-delete"
+              @click.stop="noticeStore.deleteNotice(notice.id)"
+            />
+          </div>
+        </div>
+      </el-scrollbar>
+    </el-dialog>
   </el-container>
 </template>
 
@@ -201,6 +308,127 @@ const handleCommand = async (key) => {
     justify-content: center;
     font-size: 14px;
     color: var(--text-secondary);
+  }
+}
+
+// 通知样式
+.notice-btn {
+  border: none;
+  background: transparent;
+  &:hover {
+    background: var(--border-color);
+  }
+}
+
+.notice-header {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 15px;
+}
+
+.notice-empty {
+  padding: 40px 0;
+}
+
+.notice-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  position: relative;
+
+  &:hover {
+    background-color: var(--hover-bg);
+
+    .notice-delete {
+      opacity: 1;
+    }
+  }
+
+  &.notice-unread {
+    background-color: var(--unread-bg);
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 4px;
+      height: 40px;
+      background-color: #409eff;
+      border-radius: 0 2px 2px 0;
+    }
+  }
+}
+
+.notice-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  flex-shrink: 0;
+
+  &.notice-system {
+    background-color: #ecf5ff;
+    color: #409eff;
+  }
+
+  &.notice-comment {
+    background-color: #fef0f0;
+    color: #f56c6c;
+  }
+
+  &.notice-article {
+    background-color: #f0f9eb;
+    color: #67c23a;
+  }
+}
+
+.notice-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notice-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-color);
+  margin-bottom: 4px;
+}
+
+.notice-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notice-time {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.notice-delete {
+  opacity: 0;
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+
+:deep(.dark) {
+  .notice-item.notice-unread {
+    background-color: rgba(64, 158, 255, 0.1);
   }
 }
 </style>

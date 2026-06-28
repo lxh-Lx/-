@@ -10,6 +10,7 @@ export * from './modules/counter'
 export * from './modules/theme'
 export * from './modules/comment'
 export * from './modules/statistics'
+export * from './modules/notice'
 
 // import { useUserStore } from './modules/user'
 // export { useUserStore }
